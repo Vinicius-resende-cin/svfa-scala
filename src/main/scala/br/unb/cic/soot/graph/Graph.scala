@@ -59,6 +59,11 @@ case class Statement(className: String, method: String, stmt: String, line: Int,
 
 case class VisitedMethods(sootMethod: soot.SootMethod = null, sootUnit: soot.Unit = null, line: Int) {
   override def toString: String = s"($sootMethod, ${sootUnit.toString().replace("\"", "\'")}, $line)"
+  def toJSON: String =
+    s"""{
+       |"class": "${sootMethod.getDeclaringClass}",
+       |"method": "$sootMethod",
+       |"line": "$line"}""".stripMargin
   def getMethod = sootMethod
   def getUnit = sootUnit
   def getLine = line
@@ -98,7 +103,7 @@ case class StatementNode(value: Statement, nodeType: NodeType, pathVisitedMethod
        |  "method": "${value.method}",
        |  "line": "${value.line}"
        |},
-       |"stackTrace": ${pathVisitedMethods.map(_. toString).mkString("[\"", "\",\"", "\"]")}
+       |"stackTrace": ${pathVisitedMethods.map(_. toJSON).mkString("[", ",", "]")}
      |}""".stripMargin
 
   override def equals(o: Any): Boolean = {
