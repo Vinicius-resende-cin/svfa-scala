@@ -1,7 +1,7 @@
 package br.unb.cic.soot.graph
 
 import scalax.collection.edge.LkDiEdge
-import soot.SootMethod
+import soot.{SootMethod, UnitBox}
 
 import scala.collection.immutable.HashSet
 import scala.collection.mutable.ListBuffer
@@ -67,6 +67,14 @@ case class VisitedMethods(sootMethod: soot.SootMethod = null, sootUnit: soot.Uni
   def getMethod = sootMethod
   def getUnit = sootUnit
   def getLine = line
+  def getUnitFromMethod = {
+    val matchUnits: Array[UnitBox] = sootMethod.getActiveBody.getAllUnitBoxes.stream.filter(u => u.getUnit.getJavaSourceStartLineNumber == line).toArray(size => new Array[UnitBox](size))
+    if (matchUnits.length > 0) {
+      matchUnits.head.getUnit
+    } else {
+      null
+    }
+  }
 }
 
 /*
@@ -502,17 +510,36 @@ class Graph() {
   def reportConflicts(): scala.collection.Set[String] =
     findConflictingPaths().map(p => p.toString)
 
-  def reportConflictsJSON(): scala.collection.Set[String] =
-    findConflictingPaths().map(p =>
+  def reportConflictsJSON(): scala.collection.Set[String] = {
+    def findElementInUnit(unit: soot.Unit): String = {
+      val elemPattern = """<.+:.+>""".r
+      val unitString = unit.toString()
+      val element = elemPattern.findFirstIn(unitString)
+      if (element.isDefined) element.get.replaceAll("\"", "\'") else "unknown"
+    }
+
+    findConflictingPaths().map(p => {
+      val src = p.head.pathVisitedMethods.last
+      val srcClass = src.getMethod.getDeclaringClass
+      val srcUnit = if (src.getUnit != null) src.getUnit else src.getUnitFromMethod
+      val srcElem = findElementInUnit(srcUnit)
+
+      val sink = p.last.pathVisitedMethods.last
+      val sinkClass = sink.getMethod.getDeclaringClass
+      val sinkUnit = if (sink.getUnit != null) sink.getUnit else sink.getUnitFromMethod
+      val sinkElem = findElementInUnit(sinkUnit)
+
       s"""{
          |"type": "CONFLICT",
          |"label": "SVFA conflict",
          |"body": {
-         |  "description": "SVFA conflict",
+         |  "description": "<$srcClass: $srcElem> - <$sinkClass: $sinkElem>",
          |  "interference": ${p.map(c => c.toJSON).mkString("[", ", ", "]")}
          |}
          |}""".stripMargin
+    }
     )
+  }
 
   def reportConflitcsMessage() = {
     val conflicts = findConflictingPaths()
