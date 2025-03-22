@@ -11,17 +11,13 @@ githubTokenSource := TokenSource.GitConfig("github.token")
 
 parallelExecution in Test := false
 
-resolvers += "soot snapshots" at "https://soot-build.cs.uni-paderborn.de/nexus/repository/soot-snapshot/"
-
-resolvers += "soot releases" at "https://soot-build.cs.uni-paderborn.de/nexus/repository/soot-release/"
-
 resolvers += "Local maven repository" at "file://"+Path.userHome.absolutePath+"/.m2/repository"
 
 resolvers += Classpaths.typesafeReleases
 
 libraryDependencies += "org.typelevel" %% "cats-core" % "1.6.0"
 
-libraryDependencies += "org.soot-oss" % "soot" % "4.3.0"
+libraryDependencies += "spgroup" % "soot" % "4.5.1"
 libraryDependencies += "com.google.guava" % "guava" % "27.1-jre"
 libraryDependencies += "org.scala-graph" %% "graph-core" % "1.13.0"
 
