@@ -260,10 +260,13 @@ abstract class JSVFA extends SVFA with Analysis with AnalysisDepth with FieldSen
       val v = Statement.convert(unit)
       val auxVisitedMethod = new ListBuffer[VisitedMethods]()
       auxVisitedMethod.++=(visitedMethods)
-      auxVisitedMethod += new VisitedMethods(method, unit, unit.getJavaSourceStartLineNumber)
+      auxVisitedMethod += VisitedMethods(method, unit, unit.getJavaSourceStartLineNumber)
+
       v match {
         case AssignStmt(base) => traverse(AssignStmt(base), method, defs, auxVisitedMethod)
         case InvokeStmt(base) => traverse(InvokeStmt(base), method, defs, auxVisitedMethod)
+        case SootIfStmt(base) => traverse(SootIfStmt(base), method, defs, auxVisitedMethod) //if statment
+        case SootReturnStmt(base) => traverse(SootReturnStmt(base), method, defs, auxVisitedMethod) //return
         case _ if analyze(unit) == SinkNode => traverseSinkStatement(v, method, defs, auxVisitedMethod)
         case _ =>
       }
@@ -313,6 +316,35 @@ abstract class JSVFA extends SVFA with Analysis with AnalysisDepth with FieldSen
         // TODO:
         //   we have to think about other cases here.
         //   e.g: a reference to a parameter
+      }
+    })
+  }
+
+  def traverse(stmt: SootIfStmt, method: SootMethod, defs: SimpleLocalDefs, visitedMethods: ListBuffer[VisitedMethods]) : scala.Unit = {
+    addEdgesFromIfStmt(stmt.base, method, defs, visitedMethods)
+  }
+
+  def addEdgesFromIfStmt(sourceStmt: soot.Unit, method: SootMethod, defs: SimpleLocalDefs, visitedMethods: ListBuffer[VisitedMethods]) = {
+
+    //Add useBoxes used in if statement
+    sourceStmt.getUseAndDefBoxes.forEach(useBox => {
+      if (useBox.getValue.isInstanceOf[Local]) {
+        val local = useBox.getValue.asInstanceOf[soot.Local]
+        copyRule(sourceStmt, local, method, defs, visitedMethods)
+      }
+    })
+
+  }
+
+  def traverse(stmt: SootReturnStmt, method: SootMethod, defs: SimpleLocalDefs, visitedMethods: ListBuffer[VisitedMethods]) : scala.Unit = {
+    val op = stmt.stmt.getUseBoxes
+
+    op.forEach(useBox => {
+      (useBox.getValue) match {
+        case (q: InstanceFieldRef) => loadRule(stmt.stmt, q, method, defs, visitedMethods)
+        case (q: ArrayRef) => loadArrayRule(stmt.stmt, q, method, defs, visitedMethods)
+        case (q: Local) => copyRule(stmt.stmt, q, method, defs, visitedMethods)
+        case _ =>
       }
     })
   }
@@ -791,11 +823,32 @@ abstract class JSVFA extends SVFA with Analysis with AnalysisDepth with FieldSen
     for (n <- svg.edges()){
       var auxNodeFrom = n.from.asInstanceOf[StatementNode]
       var auxNodeTo = n.to.asInstanceOf[StatementNode]
-      if (auxNodeFrom.equals(node)) return n.from.asInstanceOf[StatementNode]
-      if (auxNodeTo.equals(node)) return n.to.asInstanceOf[StatementNode]
+      if (auxNodeFrom.equals(node)) {
+        updateGraphNode(n.from, node)
+        return node
+      }
+      if (auxNodeTo.equals(node)) {
+        updateGraphNode(n.to, node)
+        return node
+      }
     }
     return null
   }
+
+  def updateGraphNode(old: GraphNode, newNode: GraphNode): Unit = {
+    val nodeEdges = svg.edges().filter(edge => edge.from.equals(old) || edge.to.equals(old))
+    svg.graph.remove(old)
+    svg.graph.add(newNode)
+    nodeEdges.foreach(edge => {
+      if (edge.from.equals(old)) {
+        svg.addEdge(newNode, edge.to, edge.label)
+      }
+      if (edge.to.equals(old)) {
+        svg.addEdge(edge.from, newNode, edge.label)
+      }
+    })
+  }
+
   def updateGraph(source: GraphNode, target: GraphNode, forceNewEdge: Boolean = false): Boolean = {
     var res = false
     if(!runInFullSparsenessMode() || true) {

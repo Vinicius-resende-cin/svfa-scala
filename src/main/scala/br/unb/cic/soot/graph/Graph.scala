@@ -98,10 +98,14 @@ case class VisitedMethods(sootMethod: soot.SootMethod = null, sootUnit: soot.Uni
  * A graph node defined using the GraphNode abstraction specific for statements.
  * Use this class as example to define your own custom nodes.
  */
-case class StatementNode(value: Statement, nodeType: NodeType, pathVisitedMethods: ListBuffer[VisitedMethods]) extends GraphNode {
+case class StatementNode(value: Statement, nodeType: NodeType, var pathVisitedMethods: ListBuffer[VisitedMethods]) extends GraphNode {
   type T = Statement
 
   def getPathVisitedMethods() = pathVisitedMethods
+
+  def setPathVisitedMethods(newPath: ListBuffer[VisitedMethods]) = {
+    pathVisitedMethods = newPath
+  }
 
   override def pathVisitedMethodsToString(): String = {
     var methodsString = ""
@@ -121,7 +125,7 @@ case class StatementNode(value: Statement, nodeType: NodeType, pathVisitedMethod
     s"""{
        |"type": "${nodeType.toString}",
        |"branch":"",
-       |"text": "${value.stmt.replace("\"", "\'")}",
+       |"text": "${value.stmt.replace("\"", "\\\"")}",
        |"location": {
        |  "file": "",
        |  "class": "${value.className}",
@@ -570,7 +574,7 @@ class Graph() {
          |"type": "CONFLICT",
          |"label": "SVFA conflict",
          |"body": {
-         |  "description": "$defElem - $useElem",
+         |  "description": "${defElem.replace("\"", "\\\"")} - ${useElem.replace("\"", "\\\"")}",
          |  "interference": ${p.map(c => c.toJSON).mkString("[", ", ", "]")}
          |}
          |}""".stripMargin
