@@ -125,7 +125,7 @@ case class StatementNode(value: Statement, nodeType: NodeType, var pathVisitedMe
     s"""{
        |"type": "${nodeType.toString}",
        |"branch":"",
-       |"text": "${value.stmt.replace("\"", "\\\"")}",
+       |"text": "${value.stmt.replace("\"", "\'")}",
        |"location": {
        |  "file": "",
        |  "class": "${value.className}",
@@ -574,7 +574,7 @@ class Graph() {
          |"type": "CONFLICT",
          |"label": "SVFA conflict",
          |"body": {
-         |  "description": "${defElem.replace("\"", "\\\"")} - ${useElem.replace("\"", "\\\"")}",
+         |  "description": "${defElem.replace("\"", "\'")} - ${useElem.replace("\"", "\'")}",
          |  "interference": ${p.map(c => c.toJSON).mkString("[", ", ", "]")}
          |}
          |}""".stripMargin
