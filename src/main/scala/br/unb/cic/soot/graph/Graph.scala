@@ -6,6 +6,13 @@ import soot.{SootMethod, UnitBox}
 import scala.collection.immutable.HashSet
 import scala.collection.mutable.ListBuffer
 
+object JsonUtils {
+  def sanitizeJsonString(str: String): String =
+    str
+      .replace("\"", "'") // troca aspas duplas por simples
+      .replace("\\", "") // remove barras invertidas
+}
+
 /*
   * This trait define the base type for node classifications.
   * A node can be classified as SourceNode, SinkNode or SimpleNode.
@@ -58,7 +65,7 @@ trait LambdaNode extends scala.AnyRef {
 case class Statement(className: String, method: String, stmt: String, line: Int, sootUnit: soot.Unit = null, sootMethod: soot.SootMethod = null)
 
 case class VisitedMethods(sootMethod: soot.SootMethod = null, sootUnit: soot.Unit = null, line: Int) {
-  override def toString: String = s"($sootMethod, ${sootUnit.toString().replace("\"", "\'")}, $line)"
+  override def toString: String = s"($sootMethod, ${JsonUtils.sanitizeJsonString(sootUnit.toString())}, $line)"
 
   /**
    * Creates an alternative representation of the object in JSON format.
@@ -125,7 +132,7 @@ case class StatementNode(value: Statement, nodeType: NodeType, var pathVisitedMe
     s"""{
        |"type": "${nodeType.toString}",
        |"branch":"",
-       |"text": "${value.stmt.replace("\"", "\'")}",
+       |"text": "${JsonUtils.sanitizeJsonString(value.stmt)}",
        |"location": {
        |  "file": "",
        |  "class": "${value.className}",
@@ -556,7 +563,7 @@ class Graph() {
       val elemPattern = """<.+:.+>""".r
       val unitString = unit.toString()
       val element = elemPattern.findFirstIn(unitString)
-      if (element.isDefined) element.get.replaceAll("\"", "\'") else "unknown"
+      if (element.isDefined) JsonUtils.sanitizeJsonString(element.get) else "unknown"
     }
 
     // Create the JSON format for each conflict
@@ -574,7 +581,7 @@ class Graph() {
          |"type": "CONFLICT",
          |"label": "SVFA conflict",
          |"body": {
-         |  "description": "${defElem.replace("\"", "\'")} - ${useElem.replace("\"", "\'")}",
+         |  "description": "${JsonUtils.sanitizeJsonString(defElem)} - ${JsonUtils.sanitizeJsonString(useElem)}",
          |  "interference": ${p.map(c => c.toJSON).mkString("[", ", ", "]")}
          |}
          |}""".stripMargin
